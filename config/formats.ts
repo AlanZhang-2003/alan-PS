@@ -19,6 +19,16 @@ The column value will be ignored for repeat sections.
 
 export const Formats: import('../sim/dex-formats').FormatList = [
 
+	{
+		section: "Custom Games",
+	},
+	{
+		name: "[Gen 9] Alan Sandbox",
+		desc: `use for testing, any moves and abilties to streamline testing`,
+		mod: "alan",
+		debug: true,
+		ruleset: ['[Gen 9] Custom Game'],
+	},
 	// S/V Singles
 	///////////////////////////////////////////////////////////////////
 
