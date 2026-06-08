@@ -12,24 +12,27 @@ export const Conditions: { [k: string]: any } = {
 			}
 		},
 	},
-	futuremove: {
-		inherit: true,
-		onResidualOrder: 3,
-		onResidual(target: any) {
-			const side = target;
-			const conditionData = side.sideConditions['futuremove'];
-			if (!conditionData) return;
-			conditionData.duration--;
-			if (conditionData.duration > 0) return;
-			const source = conditionData.source;
-			const move = this.dex.getActiveMove(conditionData.move);
-			this.add('-message', `The meteor finally crashed down!`);
-			const allTargets = this.getAllActive();
-			for (const activeTarget of allTargets) {
-				if (activeTarget === source) continue;
-				this.actions.useMove(move, source, { target: activeTarget });
+	meteortimer: {
+		duration: 3,
+		// Fix: Explicitly define the type for 'side' to resolve TS7006
+		onResidualOrder: 28,
+		onResidual(side: Side) {
+			const condition = side.getSideCondition('meteortimer');
+			const remaining = condition?.duration;
+			this.add('-message', `Meteor Impact will hit in ${remaining ?? 0} turns!`);
+		},
+		onEnd(side: Side) {
+			// Use optional chaining for safer property access to resolve ESLint errors
+			const source = this.effectData.source;
+			this.add('-message', "The meteor impact landed!");
+			const targets = side.active.concat(side.foe.active);
+			for (const target of targets) {
+				// Fix: Use optional chaining (target?.isActive)
+				if (target?.isActive && target !== source) {
+					this.add('-anim', target, 'Draco Meteor', target);
+					this.moveHit(target, source, this.dex.getMove('meteorimpact'));
+				}
 			}
-			side.removeSideCondition('futuremove');
 		},
 	},
 	vaporization: {
@@ -129,6 +132,54 @@ export const Conditions: { [k: string]: any } = {
 		},
 		onEnd(pokemon: Pokemon) {
 			this.add('-message', `${pokemon.name} is no longer trapped.`);
+		},
+	},
+	bloodmoon: {
+		name: 'BloodMoon',
+		effectType: 'Weather',
+		duration: 5,
+		onFieldStart(field: Field, pokemon: Pokemon | null, effect: Effect | null) {
+			this.add('-weather', 'BloodMoon');
+		},
+		onWeatherModifyDamage(damage: number, attacker: Pokemon, defender: Pokemon, move: ActiveMove) {
+			if (defender.effectiveWeather() !== 'bloodmoon') return;
+			if (move.type === 'Dark') {
+				return this.chainModify([0x159A, 0x1000]); // 1.35x
+			}
+			if (move.type === 'Fairy') {
+				return this.chainModify([0x0C00, 0x1000]); // 0.75x
+			}
+		},
+		onFieldResidualOrder: 1,
+		onFieldResidual() {
+			this.add('-weather', 'BloodMoon', '[upkeep]');
+			this.eachEvent('Weather');
+		},
+		onFieldEnd() {
+			this.add('-weather', 'none');
+		},
+
+		onModifyPriority(priority: number, pokemon: Pokemon, target: Pokemon | null, move: ActiveMove) {
+			if (!move) return priority;
+			if (
+				move.type === 'Dark' &&
+				move.category === 'Status'
+			) {
+				return priority + 1;
+			}
+		},
+	},
+	hotcrossbunfire: {
+		duration: 1,
+		onStart(pokemon: Pokemon) {
+			this.add('-start', pokemon, 'typechange', 'Fire');
+		},
+		onType(types: string[], pokemon: Pokemon) {
+			return ['Fire'];
+		},
+		onEnd(pokemon: Pokemon) {
+			this.add('-end', pokemon, 'typechange');
+			this.add('-message', `${pokemon.name} cooled down!`);
 		},
 	},
 };

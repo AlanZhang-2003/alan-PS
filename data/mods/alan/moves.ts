@@ -1,4 +1,4 @@
-export const Moves: import('../../../sim/dex-moves').ModdedMoveDataTable = {
+export const Moves: { [k: string]: import('../../../sim/dex-moves').ModdedMoveData } = {
 	razorwind: {
 		inherit: true,
 		isNonstandard: null,
@@ -513,42 +513,25 @@ export const Moves: import('../../../sim/dex-moves').ModdedMoveDataTable = {
 		target: 'normal',
 	},
 	meteorimpact: {
+		name: "Meteor Impact",
 		accuracy: 100,
 		basePower: 130,
-		category: 'Special',
-		name: "Meteor Impact",
-		type: 'Fire',
-		shortDesc: "Hits everyone on the field except the user 2 turns after use.",
+		category: "Special",
+		type: "Fire",
 		pp: 10,
 		priority: 0,
-		gen: 9,
-		flags: { futuremove: 1 },
-		ignoreImmunity: true,
-		onPrepareHit(target, source) {
-			this.add('-anim', source, 'Draco Meteor', target);
-		},
-		onTryMove(pokemon) {
+		flags: { protect: 1, futuremove: 1 }, // Protect usually blocks AoE
+		onTryMove(pokemon, target, move) {
+			// Use a side condition to keep the timer
+			// We use a custom ID to avoid conflicts with real future moves
+			if (pokemon.side.addSideCondition('meteortimer', pokemon)) {
+				// Assign the source to the condition's effectData
+				pokemon.side.sideConditions['meteortimer'].source = pokemon;
+			}
 			this.attrLastMove('[still]');
-			if (!pokemon.side.addSideCondition('futuremove')) return false;
-			Object.assign(pokemon.side.sideConditions['futuremove'], {
-				duration: 3, // This sets the 2-turn delay!
-				move: 'meteorimpact',
-				source: pokemon,
-				moveData: {
-					id: 'meteorimpact',
-					name: "Meteor Impact",
-					accuracy: 100,
-					basePower: 130,
-					category: 'Special',
-					type: 'Fire',
-					flags: { futuremove: 1 },
-					ignoreImmunity: true,
-				},
-			});
-			this.add('-start', pokemon, 'move: Meteor Impact');
-			return null; // Prevents the move from executing immediately
+			return null; // Prevents immediate damage
 		},
-		target: 'allAdjacent',
+		target: "allAdjacent",
 	},
 	pumpkinsmash: {
 		accuracy: 80,
@@ -559,7 +542,7 @@ export const Moves: import('../../../sim/dex-moves').ModdedMoveDataTable = {
 		pp: 10,
 		priority: 0,
 		gen: 9,
-		flags: { protect: 1, mirror: 1, metronome: 1, hammer: 1 } as any,
+		flags: { contact: 1, protect: 1, mirror: 1, metronome: 1, hammer: 1 } as any,
 		type: "Grass", // Matches the pumpkin/grassy terrain theme
 		onTryMove() {
 			this.attrLastMove('[still]');
@@ -579,6 +562,7 @@ export const Moves: import('../../../sim/dex-moves').ModdedMoveDataTable = {
 		target: 'normal',
 	},
 	melonmasher: {
+		num: -101,
 		accuracy: 50,
 		basePower: 140,
 		category: 'Physical',
@@ -586,7 +570,7 @@ export const Moves: import('../../../sim/dex-moves').ModdedMoveDataTable = {
 		pp: 5,
 		priority: 0,
 		gen: 9,
-		flags: { protect: 1, mirror: 1, metronome: 1, hammer: 1 } as any,
+		flags: { contact: 1, protect: 1, mirror: 1, metronome: 1, hammer: 1 } as any,
 		type: "Water",
 		onTryMove() {
 			this.attrLastMove('[still]');
@@ -641,7 +625,7 @@ export const Moves: import('../../../sim/dex-moves').ModdedMoveDataTable = {
 		desc: "The user break the ice by taking the first action; hits on the first turn only. ",
 		pp: 10,
 		priority: 2,
-		flags: { protect: 1, mirror: 1 },
+		flags: { contact: 1, protect: 1, mirror: 1 },
 		onTryMove() {
 			this.attrLastMove('[still]');
 		},
@@ -702,10 +686,10 @@ export const Moves: import('../../../sim/dex-moves').ModdedMoveDataTable = {
 			this.add('-anim', source, 'Sweet Kiss', target);
 		},
 		secondary: {
-            chance: 10,
-            volatileStatus: 'attract',
+			chance: 10,
+			volatileStatus: 'attract',
 
-        },
+		},
 		target: "normal",
 		type: "Fairy",
 		contestType: "Cute",
@@ -937,5 +921,421 @@ export const Moves: import('../../../sim/dex-moves').ModdedMoveDataTable = {
 		},
 		type: "???", // The typeless designation
 		target: "normal",
+	},
+	weatherball: {
+		inherit: true,
+		onModifyType(move, pokemon) {
+			if (this.field.isWeather('bloodmoon')) {
+				move.type = 'Dark';
+			}
+		},
+		basePowerCallback(pokemon, target, move) {
+			if (this.field.isWeather('bloodmoon')) {
+				return 100;
+			}
+			return move.basePower;
+		},
+	},
+	moonlight: {
+		inherit: true,
+		onHit(pokemon) {
+			let factor = 0.5;
+			if (this.field.isWeather('bloodmoon')) {
+				factor = 2 / 3;
+			}
+			return !!this.heal(pokemon.baseMaxhp * factor);
+		},
+	},
+	morningsun: {
+		inherit: true,
+		onHit(pokemon) {
+			let factor = 0.5;
+			if (this.field.isWeather('bloodmoon')) {
+				factor = 1 / 3;
+			}
+			return !!this.heal(pokemon.baseMaxhp * factor);
+		},
+	},
+	synthesis: {
+		inherit: true,
+		onHit(pokemon) {
+			let factor = 0.5;
+			if (this.field.isWeather('bloodmoon')) {
+				factor = 1 / 3;
+			}
+			return !!this.heal(pokemon.baseMaxhp * factor);
+		},
+	},
+	newmoon: {
+		accuracy: true,
+		basePower: 0,
+		category: "Status",
+		name: "New Moon",
+		pp: 5,
+		priority: 0,
+		flags: { snatch: 1, mirror: 1 },
+		onHitField(target, source) {
+			this.field.setWeather('bloodmoon');
+			this.add('-message', 'A Blood Moon rises!');
+		},
+		target: "all",
+		type: "Dark",
+	},
+	nightmare: {
+		inherit: true,
+		condition: {
+			inherit: true,
+			onResidual(pokemon) {
+				if (this.field.isWeather('bloodmoon')) {
+					this.damage(pokemon.baseMaxhp * 0.35);
+				} else {
+					this.damage(pokemon.baseMaxhp / 4);
+				}
+			},
+		},
+	},
+	stainedslash: {
+		accuracy: 100,
+		basePower: 60,
+		category: "Physical",
+		name: "Stained Slash",
+		shortDesc: "30% chance to poison the target regardless of type immunities. Super effective against Steel-types and lowers Steel-type's Defense by 1.",
+		pp: 15,
+		priority: 0,
+		type: "Poison",
+		flags: { contact: 1, protect: 1, mirror: 1 },
+		onEffectiveness(typeMod, target, type, move) {
+			if (type === 'Steel') return 1;
+		},
+		onHit(target, source, move) {
+			// Lower Defense if target is Steel-type
+			if (target.hasType('Steel')) {
+				this.boost({ def: -1 }, target);
+			}
+			// 30% poison chance
+			if (this.randomChance(3, 10)) {
+				// Block poison if behind Substitute
+				if (target.volatiles['substitute']) return;
+				// Block poison if Immunity
+				if (target.hasAbility('immunity')) return;
+				target.trySetStatus('psn', source, move);
+			}
+		},
+		target: "normal",
+		gen: 9,
+	},
+	dustblast: {
+		accuracy: 95,
+		basePower: 100,
+		category: "Special",
+		name: "Dust Blast",
+		pp: 5,
+		priority: 0,
+		type: "Rock",
+		flags: { protect: 1, mirror: 1 },
+		secondaries: [
+			{
+				chance: 50,
+				self: { boosts: { spd: 2 } },
+			},
+		],
+		target: "allAdjacentFoes",
+		gen: 9,
+	},
+	rubysplash: {
+		accuracy: 70,
+		basePower: 95,
+		category: "Special",
+		name: "Ruby Splash",
+		pp: 10,
+		priority: 0,
+		type: "Rock",
+		flags: { protect: 1, mirror: 1 },
+		onModifyMove(move, pokemon, target) {
+			switch (target?.effectiveWeather()) {
+			case 'sandstorm':
+				move.accuracy = true;
+				break;
+			}
+		},
+		secondary: {
+			chance: 30,
+			status: 'brn',
+		},
+		target: "allAdjacentFoes",
+		gen: 9,
+	},
+	diamonddust: {
+		accuracy: 100,
+		basePower: 70,
+		pp: 5,
+		category: "Special",
+		name: "Diamond Dust",
+		shortDesc: "This moves uses the highest attacking stat, always super effective.",
+		priority: 0,
+		flags: { protect: 1, mirror: 1 },
+		onModifyMove(move, pokemon) {
+			if (pokemon.getStat('atk', false, true) > pokemon.getStat('spa', false, true)) {
+				move.overrideOffensiveStat = 'atk';
+			}
+		},
+		onEffectiveness(typeMod, target, type) {
+			return 1;
+		},
+		target: "normal",
+		type: "Ice",
+	},
+	iceage: {
+		accuracy: 50,
+		basePower: 200,
+		category: "Special",
+		name: "Ice Age",
+		pp: 5,
+		priority: 0,
+		// The engine looks for 'charge' flag to trigger the two-turn logic
+		flags: { protect: 1, mirror: 1 },
+		onTryMove(attacker, defender, move) {
+			// If the move is already in the 'twoturnmove' state, it executes
+			if (attacker.removeVolatile(move.id)) {
+				return;
+			}
+			// First turn: Start the charge
+			this.attrLastMove('[still]');
+			this.add('-anim', attacker, 'Hail', defender);
+			this.add('-prepare', attacker, move.name);
+			// This is the core engine hook for two-turn moves
+			attacker.addVolatile('twoturnmove', defender);
+			return null;
+		},
+		secondaries: [{ chance: 50, status: 'frz' }],
+		target: "allAdjacent",
+		type: "Ice",
+	},
+	starfall: {
+		accuracy: 90,
+		basePower: 130,
+		category: "Special",
+		name: "Starfall",
+		pp: 5,
+		priority: 0,
+		flags: { protect: 1, mirror: 1 },
+		onEffectiveness(typeMod, target, type, move) {
+			return typeMod + this.dex.getEffectiveness('Psychic', type);
+		},
+		self: { boosts: { spa: -2 } },
+		target: "normal",
+		type: "Rock",
+	},
+	hotcrossbun: {
+		accuracy: 100,
+		basePower: 70,
+		category: "Physical",
+		name: "Hot Cross Bun",
+		shortDesc: "The user becomes a Fire-type for one turn.",
+		pp: 15,
+		priority: 1,
+		flags: { contact: 1, protect: 1, mirror: 1 },
+		// Use onHit or onTryMove instead of onPrepareHit to avoid
+		// triggering logic before the target is validated
+		onPrepareHit(target, source) {
+			this.attrLastMove('[still]');
+			source.addVolatile('hotcrossbunfire');
+			this.add('-anim', source, 'Heat Crash', target);
+		},
+		target: "normal",
+		type: "Fire",
+	},
+	rocketpunch: {
+		accuracy: true,
+		basePower: 100,
+		category: "Physical",
+		name: "Rocket Punch",
+		pp: 10,
+		priority: 0,
+		flags: { contact: 1, protect: 1, cantusetwice: 1, hammer: 1 } as any,
+		onPrepareHit(target, source) {
+			this.attrLastMove('[still]');
+			this.add('-anim', source, 'Bullet Punch', target);
+		},
+		target: "normal",
+		type: "Steel",
+	},
+	steamroller: {
+		accuracy: 100,
+		basePower: 80,
+		category: "Physical",
+		name: "Steamroller",
+		shortDesc: "Gain +10 base power for each stage of speed",
+		pp: 10,
+		priority: 0,
+		flags: { contact: 1, protect: 1, mirror: 1 },
+		// The logic for scaling base power
+		basePowerCallback(pokemon, target, move) {
+			const boosts = pokemon.boosts;
+			const speedStages = boosts.spe;
+			// Increase power by 10 for every stage of speed
+			return move.basePower + (speedStages * 10);
+		},
+		target: "normal",
+		type: "Bug",
+	},
+	providencefist: {
+		accuracy: 100,
+		basePower: 70,
+		category: "Physical",
+		name: "Providence Fist",
+		pp: 15,
+		priority: 0,
+		flags: { protect: 1, punch: 1 },
+		secondary: { chance: 20, volatileStatus: 'flinch' },
+		onPrepareHit(target, source) {
+			this.attrLastMove('[still]');
+			this.add('-anim', source, 'Teleport', target);
+			this.add('-anim', source, 'Comet Punch', target);
+		},
+		target: "normal",
+		type: "Psychic",
+	},
+	knockoutpunch: {
+		accuracy: 100,
+		basePower: 70,
+		category: "Physical",
+		name: "Knockout-Punch",
+		pp: 15,
+		flags: { protect: 1, punch: 1, contact: 1, metronome: 1 },
+		priority: 1,
+		critRatio: 2,
+		onPrepareHit(target, source) {
+			this.attrLastMove('[still]');
+			this.add('-anim', source, 'Work Up', target);
+			this.add('-anim', source, 'Focus Punch', target);
+		},
+		onHit(target, source) {
+			if (!target || target.fainted) return;
+			if (target.ability !== 'comatose') {
+				target.setAbility('comatose', source);
+				this.add('-ability', target, 'Comatose');
+			}
+		},
+		target: "normal",
+		type: "Fighting",
+	},
+	warcry: {
+		accuracy: 90,
+		basePower: 0,
+		category: "Status",
+		name: "War Cry",
+		pp: 10,
+		priority: 0,
+		flags: { protect: 1, sound: 1, metronome: 1, cantusetwice: 1 },
+		onPrepareHit(target, source) {
+			this.attrLastMove('[still]');
+			this.add('-anim', source, 'Boomburst', target);
+		},
+		boosts: {
+			atk: -1,
+			def: -1,
+		},
+		target: "allAdjacentFoes",
+		type: "Normal",
+	},
+	trickortreat: {
+		inherit: true,
+		onHit(target) {
+			// Remove Ghost if the target has it
+			if (target.hasType('Ghost')) {
+				const newTypes = target.getTypes().filter(type => type !== 'Ghost');
+				target.setType(newTypes); // Empty array -> typeless (Burn Up behavior)
+				this.add('-start', target, 'typechange',
+					newTypes.length ? newTypes.join('/') : '???');
+			} else {
+				// Otherwise, add Ghost
+				target.addType('Ghost');
+				this.add('-start', target, 'typeadd', 'Ghost');
+			}
+			// Swap Attack and Special Attack
+			const temp = target.storedStats.atk;
+			target.storedStats.atk = target.storedStats.spa;
+			target.storedStats.spa = temp;
+		},
+		condition: {
+			onModifyAtk(atk, attacker) {
+				return this.chainModify(attacker.storedStats.spa / attacker.storedStats.atk);
+			},
+			onModifySpA(spa, attacker) {
+				return this.chainModify(attacker.storedStats.atk / attacker.storedStats.spa);
+			},
+		},
+	},
+	loveknuckle: {
+		accuracy: 100,
+		basePower: 70,
+		category: "Physical",
+		name: "Love Knuckle",
+		pp: 10,
+		priority: 0,
+		flags: { contact: 1, protect: 1, punch: 1, metronome: 1 },
+		onPrepareHit(target, source) {
+			this.attrLastMove('[still]');
+			this.add('-anim', source, 'Attract', source);
+			this.add('-anim', source, 'Mach Punch', target);
+		},
+		onAfterMoveSecondarySelf(source) {
+			if (!this.lastDamage) return;
+			const amount = Math.floor(this.lastDamage / 4);
+			for (const ally of source.allies()) {
+				if (ally.fainted) continue;
+				this.heal(amount, ally, source);
+			}
+		},
+		target: "normal",
+		type: "Fairy",
+	},
+	jumpstart: {
+		accuracy: true,
+		basePower: 0,
+		category: "Status",
+		name: "Jump-Start",
+		pp: 10,
+		priority: 0,
+		flags: { snatch: 1, metronome: 1 },
+		onTry(source) {
+			this.attrLastMove('[still]');
+			this.add('-anim', source, 'Charge', source);
+		},
+		boosts: {
+			spa: 1,
+			spd: 1,
+			spe: 1,
+		},
+		volatileStatus: 'charge',
+		target: "self",
+		type: "Electric",
+	},
+	fossilize: {
+		accuracy: true,
+		basePower: 0,
+		category: "Status",
+		name: "Fossilize",
+		pp: 10,
+		priority: 0,
+		flags: { protect: 1, reflectable: 1, metronome: 1 },
+		onHit(target, source) {
+			if (target.hasType('Rock')) {
+				this.add('-fail', target, 'move: Fossilize');
+				return false;
+			}
+			// Keep the primary type, remove the secondary.
+			const types = target.getTypes();
+			target.setType([types[0], 'Rock']);
+			this.add('-start', target, 'typechange', `${types[0]}/Rock`);
+			// Change Ability
+			const oldAbility = target.setAbility('mineralize', source);
+			if (oldAbility) {
+				this.add('-ability', target, 'Mineralize');
+			}
+		},
+		target: "normal",
+		type: "Rock",
 	},
 };

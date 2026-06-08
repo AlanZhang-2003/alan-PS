@@ -478,11 +478,13 @@ export const Abilities: import('../../../sim/dex-abilities').ModdedAbilityDataTa
 	pressure: {
 		inherit: true,
 		onStart(pokemon) {
+			console.log("Pressure activated");
 			this.add('-ability', pokemon, 'Pressure');
 			for (const target of this.getAllActive()) {
+				console.log(target.name);
 				target.clearBoosts();
-				this.add('-clearallboost', target);
 			}
+			this.add('-message', 'All stat changes were reset!');
 		},
 	},
 	pointblank: {
@@ -716,15 +718,6 @@ export const Abilities: import('../../../sim/dex-abilities').ModdedAbilityDataTa
 			this.field.addPseudoWeather('gravity', source);
 		},
 	},
-	hotfoot: {
-		name: "hotfoot",
-		shortDesc: "This Pokémon's Speed is 1.5x when burned.",
-		onModifySpe(spe, pokemon) {
-			if (pokemon.status === 'brn') {
-				return this.chainModify(1.5);
-			}
-		},
-	},
 	martialartist: {
 		name: "martialartist",
 		shortDesc: "Adds fighting typing to this Pokemon on entry.",
@@ -784,7 +777,7 @@ export const Abilities: import('../../../sim/dex-abilities').ModdedAbilityDataTa
 		name: "Unluck",
 	},
 	frenzy: {
-		name: "Frenzy",
+		name: "frenzy",
 		shortDesc: "Raises highest attacking stat on entry/KO. Contact spreads this Ability. Faints if no attacking move is used for 3 turns.",
 
 		// Track turns without attacking
@@ -819,7 +812,9 @@ export const Abilities: import('../../../sim/dex-abilities').ModdedAbilityDataTa
 		// Reset counter when using an attacking move
 		onAfterMove(pokemon, target, move) {
 			if (move.category !== 'Status') {
-				pokemon.volatiles['frenzycounter'].turns = 0;
+				if (pokemon.volatiles.frenzycounter) {
+					pokemon.volatiles.frenzycounter.turns = 0;
+				}
 			}
 		},
 
@@ -834,12 +829,43 @@ export const Abilities: import('../../../sim/dex-abilities').ModdedAbilityDataTa
 		},
 	},
 	surefire: {
-		name: "Sure Fire",
+		name: "surefire",
 		shortDesc: "This Pokemon's move secondary effects always occur.",
 		onModifyMove(move, pokemon) {
 			if (!move.secondaries) return;
 			for (const secondary of move.secondaries) {
 				secondary.chance = 100;
+			}
+		},
+	},
+	nocturn: {
+		name: "nocturn",
+		shortDesc: "Summons a Blood Moon when the user enters the field.",
+		onStart(source) {
+			if (!this.field.isWeather('bloodmoon')) {
+				this.field.setWeather('bloodmoon');
+				this.add('-ability', source, 'Nocturn');
+				this.add('-message', 'Nocturn summoned a Blood Moon!');
+			}
+		},
+	},
+	predatoryplant: {
+		name: "Predatory Plant",
+		shortDesc: "Grass moves are super effective on Bug. This Pokemon resists Bug moves.",
+		// Offensive: Boost Grass moves against Bug-types
+		onBasePower(basePower, attacker, defender, move) {
+			if (move.type === 'Grass' && defender.hasType('Bug')) {
+				return this.chainModify(3);
+			}
+		},
+		onSourceModifyAtk(atk, attacker, defender, move) {
+			if (move.type === 'Bug') {
+				return this.chainModify(0.5); // Reduces damage by 50%
+			}
+		},
+		onSourceModifySpA(spa, attacker, defender, move) {
+			if (move.type === 'Bug') {
+				return this.chainModify(0.5); // Reduces damage by 50%
 			}
 		},
 	},
