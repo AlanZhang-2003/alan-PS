@@ -26,6 +26,7 @@ export const Formats: import('../sim/dex-formats').FormatList = [
 		name: "[Gen 9] Alan Sandbox",
 		desc: `use for testing, any moves and abilties to streamline testing`,
 		mod: "alan",
+		gameType: 'singles',
 		debug: true,
 		ruleset: ['[Gen 9] Custom Game'],
 	},
